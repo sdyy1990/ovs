@@ -3,7 +3,8 @@ bin_PROGRAMS += \
 	utilities/ovs-testcontroller \
 	utilities/ovs-dpctl \
 	utilities/ovs-ofctl \
-	utilities/ovs-vsctl
+	utilities/ovs-vsctl \
+	utilities/ovs-checkpoint
 bin_SCRIPTS += utilities/ovs-docker \
 	utilities/ovs-pki
 if HAVE_PYTHON
@@ -104,6 +105,12 @@ man_MANS += \
 	utilities/ovs-test.8 \
 	utilities/ovs-vlan-test.8 \
 	utilities/ovs-vsctl.8
+
+utilities_ovs_checkpoint_SOURCES = utilities/ovs-checkpoint.c
+utilities_ovs_checkpoint_LDADD = \
+	ofproto/libofproto.la \
+	lib/libopenvswitch.la \
+	$(SSL_LIBS)
 
 utilities_ovs_appctl_SOURCES = utilities/ovs-appctl.c
 utilities_ovs_appctl_LDADD = lib/libopenvswitch.la

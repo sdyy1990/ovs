@@ -122,9 +122,7 @@ utilities_ovs_dpctl_SOURCES = utilities/ovs-dpctl.c
 utilities_ovs_dpctl_LDADD = lib/libopenvswitch.la
 
 utilities_ovs_ofctl_SOURCES = utilities/ovs-ofctl.c
-utilities_ovs_ofctl_LDADD = \
-	ofproto/libofproto.la \
-	lib/libopenvswitch.la
+utilities_ovs_ofctl_LDADD =	ofproto/libofproto.la lib/libopenvswitch.la
 
 utilities_ovs_vsctl_SOURCES = utilities/ovs-vsctl.c
 utilities_ovs_vsctl_LDADD = lib/libopenvswitch.la

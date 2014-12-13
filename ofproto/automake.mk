@@ -50,7 +50,9 @@ ofproto_libofproto_la_SOURCES = \
 	ofproto/tunnel.c \
 	ofproto/tunnel.h \
 	ofproto/bundles.c \
-	ofproto/bundles.h
+	ofproto/bundles.h \
+	ofproto/ofp-ofctllib.c \
+	ofproto/ofp-ofctllib.h
 
 ofproto_libofproto_la_CPPFLAGS = $(AM_CPPFLAGS)
 ofproto_libofproto_la_CFLAGS = $(AM_CFLAGS)

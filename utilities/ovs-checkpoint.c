@@ -51,7 +51,7 @@
 
 VLOG_DEFINE_THIS_MODULE(checkpoint);
 int main(int argc , char * argv[]) {
-     printf("ovs-checkpoint\n");
+     printf("ovs-checkpoint mv\n");
      return 0;
 }
 

@@ -2613,6 +2613,10 @@ ofp_print_bundle_ctrl(struct ds *s, const struct ofp_header *oh)
     ofp_print_bit_names(s, bctrl.flags, bundle_flags_to_name, ' ');
 }
 
+
+static void ofp_print_checkpoint_request(struct ds *string, const struct ofp_header *oh);
+static void ofp_print_checkpoint_reply(struct ds * string, const struct ofp_header *oh);
+
 static void
 ofp_print_bundle_add(struct ds *s, const struct ofp_header *oh, int verbosity)
 {
@@ -2896,6 +2900,13 @@ ofp_to_string__(const struct ofp_header *oh, enum ofpraw raw,
     case OFPTYPE_BUNDLE_ADD_MESSAGE:
         ofp_print_bundle_add(string, msg, verbosity);
         break;
+
+	/* checkpoint */
+    case OFPTYPE_CHECKPOINT_ROLLBACK_REQUEST:
+        ofp_print_checkpoint_request(string,msg);
+        break;
+    case OFPTYPE_CHECKPOINT_ROLLBACK_REPLY:
+        ofp_print_checkpoint_reply(string,msg);
     }
 }
 
@@ -2979,3 +2990,50 @@ ofp_print_packet(FILE *stream, const void *data, size_t len)
 {
     print_and_free(stream, ofp_packet_to_string(data, len));
 }
+
+
+/* checkpoint */
+static void
+ofp_print_checkpoint_request(struct ds *string, const struct ofp_header *oh)
+{
+    struct ofputil_checkpoint_rollback_request sw;
+    enum ofperr error;
+    error = ofputil_decode_checkpoint_rollback_request(&sw,oh);
+    if (error) {
+        ofp_print_error(string,error);
+        return;
+    }
+    ds_put_char(string,' ');
+    ds_put_cstr(string,"ckpt/robk request token: ");
+    ds_put_cstr(string,(const char *) sw.fname);
+	if (sw.type == CHECKPOINT_T)
+		ds_put_cstr(string," Type: checkpoint");
+	if (sw.type == ROLLBACK_T) 
+		ds_put_cstr(string," Type: rollback");
+  
+}
+
+static void
+ofp_print_checkpoint_reply(struct ds * string,
+                                     const struct ofp_header *oh)
+{
+    struct ofputil_checkpoint_rollback_reply sw;
+    enum ofperr error;
+    error = ofputil_decode_checkpoint_rollback_reply(&sw,oh);
+    if (error) {
+        ofp_print_error(string,error);
+        return;
+    }
+    ds_put_char(string,' ');
+    ds_put_cstr(string,"ckpt/robk reply token:");
+    ds_put_cstr(string,(const char *) sw.fname);
+    if (sw.status == CHECKPOINT_SUCC) 
+       ds_put_cstr(string,"Checkpoint+SUCC");
+	else if (sw.status == CHECKPOINT_FAIL) 
+       ds_put_cstr(string,"Checkpoint+FAIL");
+	else if (sw.status == ROLLBACK_SUCC) 
+       ds_put_cstr(string,"Rollback+SUCC");
+	else if (sw.status == ROLLBACK_SUCC) 
+       ds_put_cstr(string,"Rollback+FAIL");
+}
+

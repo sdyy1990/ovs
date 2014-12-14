@@ -441,6 +441,8 @@ lswitch_process_packet(struct lswitch *sw, const struct ofpbuf *msg)
     case OFPTYPE_TABLE_FEATURES_STATS_REPLY:
     case OFPTYPE_BUNDLE_CONTROL:
     case OFPTYPE_BUNDLE_ADD_MESSAGE:
+    case OFPTYPE_CHECKPOINT_ROLLBACK_REQUEST:
+    case OFPTYPE_CHECKPOINT_ROLLBACK_REPLY:
     default:
         if (VLOG_IS_DBG_ENABLED()) {
             char *s = ofp_to_string(ofpbuf_data(msg), ofpbuf_size(msg), 2);

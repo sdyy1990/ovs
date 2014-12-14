@@ -51,7 +51,8 @@
 
 VLOG_DEFINE_THIS_MODULE(checkpoint);
 int main(int argc , char * argv[]) {
-     printf("ovs-checkpoint mv\n");
+     
+     printf("%s ovs-checkpoint mv%s\n",THIS_MODULE->name, argv[argc-1]);
      return 0;
 }
 
@@ -342,8 +343,9 @@ checkpoint_flow_mod(int argc, char *argv[], uint16_t command,struct vconn *vconn
 
     error = parse_ofp_flow_mod_str(&fm, argc > 2 ? argv[2] : "", command,
                                    &usable_protocols);
+   printf("%s",argv[0]);
     if (error) {
-        ovs_fatal(0, "%s", error);
+        ovs_fatal(0, "%s" , error);
     }
     ofctl_flow_mod__( &fm, 1, vconn, protocol);
 }

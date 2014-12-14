@@ -636,5 +636,26 @@ struct ofp11_flow_removed {
     /* Followed by an ofp11_match structure. */
 };
 OFP_ASSERT(sizeof(struct ofp11_flow_removed) == 40);
+enum ofp11_checkpoint_rollback_type {
+        CHECKPOINT_T_OFP11 = 1,
+        ROLLBACK_T_OFP11 = 2
+};
+
+struct ofp11_checkpoint_rollback_request{
+       uint8_t fname[15];
+       uint8_t type;
+};
+OFP_ASSERT(sizeof(struct ofp11_checkpoint_rollback_request) == 16);
+enum ofp11_checkpoint_rollback_reply_status {
+            CHECKPOINT_SUCC_OFP11 = 1,
+            CHECKPOINT_FAIL_OFP11 = 2,
+            ROLLBACK_SUCC_OFP11 =3,
+            ROLLBACK_FAIL_OFP11 =4
+};
+struct ofp11_checkpoint_rollback_reply {
+       uint8_t fname[15];
+       uint8_t status;
+};
+OFP_ASSERT(sizeof(struct ofp11_checkpoint_rollback_reply)==16);
 
 #endif /* openflow/openflow-1.1.h */

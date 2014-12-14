@@ -247,6 +247,15 @@ enum ofpraw {
     /* OFPT 1.4+ (34): struct ofp14_bundle_ctrl_msg, uint8_t[]. */
     OFPRAW_OFPT14_BUNDLE_ADD_MESSAGE,
 
+    /*OFPT 1.1+ (35): struct ofp11_checkpoint_rollback_request. */
+    OFPRAW_OFPT_CHECKPOINT_ROLLBACK_REQUEST,
+
+    /*OFPT 1.1+ (36): struct ofp11_checkpoint_rollback_reply. */
+    OFPRAW_OFPT_CHECKPOINT_ROLLBACK_REPLY,
+
+
+
+
 /* Standard statistics. */
 
     /* OFPST 1.0+ (0): void. */
@@ -613,6 +622,8 @@ enum ofptype {
                                          * OFPRAW_NXST_FLOW_MONITOR_REQUEST. */
     OFPTYPE_FLOW_MONITOR_STATS_REPLY,   /* OFPRAW_OFPST14_FLOW_MONITOR_REPLY.
                                          * OFPRAW_NXST_FLOW_MONITOR_REPLY. */
+    OFPTYPE_CHECKPOINT_ROLLBACK_REQUEST, /* OFPRAW_OFPT_CHECKPOINT_ROLLBACK_REQUEST. */
+    OFPTYPE_CHECKPOINT_ROLLBACK_REPLY, /* OFPRAW_OFPT_CHECKPOINT_ROLLBACK_REPLY. */
 
     /* Nicira extensions. */
     OFPTYPE_SET_FLOW_FORMAT,      /* OFPRAW_NXT_SET_FLOW_FORMAT. */

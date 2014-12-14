@@ -1104,4 +1104,32 @@ struct ofpbuf *ofputil_encode_bundle_add(enum ofp_version ofp_version,
 
 enum ofperr ofputil_decode_bundle_add(const struct ofp_header *,
                                       struct ofputil_bundle_add_msg *);
+enum ofputil_checkpoint_rollback_type {
+        CHECKPOINT_T = 1,
+        ROLLBACK_T = 2
+};
+
+//NOTE: HERE the length should be consistent with ofp11_checkpoint_rollback_request
+//
+struct ofputil_checkpoint_rollback_request{
+       uint8_t fname[15];
+       enum ofputil_checkpoint_rollback_type type;
+};
+enum ofputil_checkpoint_rollback_reply_status {
+            CHECKPOINT_SUCC = 1,
+            CHECKPOINT_FAIL = 2,
+            ROLLBACK_SUCC =3,
+            ROLLBACK_FAIL =4
+};
+struct ofputil_checkpoint_rollback_reply {
+       uint8_t fname[15];
+//NOTE: HERE the length should be consistent with ofp11_checkpoint_rollback_request
+       enum ofputil_checkpoint_rollback_reply_status status;
+};
+
+
+enum ofperr 
+ofputil_decode_checkpoint_rollback_request(struct ofputil_checkpoint_rollback_request *req, const struct ofp_header *oh );
+enum ofperr
+ofputil_decode_checkpoint_rollback_reply(struct ofputil_checkpoint_rollback_reply *rep, const struct ofp_header *oh);
 #endif /* ofp-util.h */

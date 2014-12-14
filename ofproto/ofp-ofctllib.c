@@ -1,5 +1,5 @@
 
-
+#include <config.h>
 #include "odp-util.h"
 #include "ofp-actions.h"
 #include "ofp-errors.h"
@@ -31,7 +31,7 @@ prepare_dump_flows(int argc, char *argv[], bool aggregate, struct ofpbuf **reque
         ovs_fatal(0, "%s", error);
     }
 
-    protocol = open_vconn(argv[1], &vconn,allowed_protocols);
+    protocol = open_vconn(argv[1], &vconn);
     protocol = set_protocol_for_flow_dump(vconn, protocol, usable_protocols, allowed_protocols);
     *requestp = ofputil_encode_flow_stats_request(&fsr, protocol);
     return vconn;
@@ -39,14 +39,14 @@ prepare_dump_flows(int argc, char *argv[], bool aggregate, struct ofpbuf **reque
 
 
 enum ofputil_protocol
-open_vconn(const char *name, struct vconn **vconnp, enum ofputil_protocol allowed_protocols)
+open_vconn(const char *name, struct vconn **vconnp)
 {
-    return open_vconn__(name, MGMT, vconnp,allowed_protocols );
+    return open_vconn__(name, MGMT, vconnp);
 }
 
 enum ofputil_protocol
 open_vconn__(const char *name, enum open_target target,
-             struct vconn **vconnp, enum ofputil_protocol allowed_protocols)
+             struct vconn **vconnp)
 {
     const char *suffix = target == MGMT ? "mgmt" : "snoop";
     char *datapath_name, *datapath_type, *socket_name;

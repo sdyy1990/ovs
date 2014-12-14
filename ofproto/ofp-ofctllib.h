@@ -13,9 +13,9 @@ prepare_dump_flows(int argc, char *argv[], bool aggregate,
 enum open_target { MGMT, SNOOP };
 enum ofputil_protocol
 open_vconn__(const char *name, enum open_target target,
-             struct vconn **vconnp, enum ofputil_protocol allowed_protocols);
+             struct vconn **vconnp); //, enum ofputil_protocol allowed_protocols);
 enum ofputil_protocol
-open_vconn(const char *name, struct vconn **vconnp, enum ofputil_protocol allowed_protocols);
+open_vconn(const char *name, struct vconn **vconnp);
 
 
 enum ofputil_protocol

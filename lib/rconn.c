@@ -1391,6 +1391,8 @@ is_admitted_msg(const struct ofpbuf *b)
     case OFPTYPE_TABLE_FEATURES_STATS_REPLY:
     case OFPTYPE_BUNDLE_CONTROL:
     case OFPTYPE_BUNDLE_ADD_MESSAGE:
+    case OFPTYPE_CHECKPOINT_ROLLBACK_REQUEST:
+    case OFPTYPE_CHECKPOINT_ROLLBACK_REPLY:
         return false;
 
     case OFPTYPE_PACKET_IN:

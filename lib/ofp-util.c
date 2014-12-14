@@ -8529,3 +8529,25 @@ ofputil_encode_bundle_add(enum ofp_version ofp_version,
 
     return request;
 }
+
+
+//ofputil_decode_checkpoint_rollback_request(&sw,oh);
+//
+//ofputil_decode_checkpoint_rollback_request(&sw,oh);
+
+
+enum ofperr 
+ofputil_decode_checkpoint_rollback_request(struct ofputil_checkpoint_rollback_request *req, const struct ofp_header *oh ) {
+        const struct ofp11_checkpoint_rollback_request *req11 = ofpmsg_body(oh);
+        req->type = (enum ofputil_checkpoint_rollback_type) req11->type;
+        memcpy(req->fname, req11->fname, sizeof (req->fname));
+        return 0;
+}
+
+enum ofperr
+ofputil_decode_checkpoint_rollback_reply(struct ofputil_checkpoint_rollback_reply *rep, const struct ofp_header *oh) {
+        const struct ofp11_checkpoint_rollback_reply *req11 = ofpmsg_body(oh);
+        rep->status = (enum ofputil_checkpoint_rollback_reply_status) req11->status;
+        memcpy(rep->fname, req11->fname, sizeof (req11->fname));
+        return 0;
+}

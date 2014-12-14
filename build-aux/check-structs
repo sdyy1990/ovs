@@ -120,7 +120,7 @@ def forceMatch(t):
         fatal("%s expected" % t)
 
 def parseTaggedName():
-    assert token in ('struct', 'union')
+    assert token in ('struct', 'union', 'enum' )
     name = token
     getToken()
     forceId()
@@ -129,7 +129,7 @@ def parseTaggedName():
     return name
 
 def parseTypeName():
-    if token in ('struct', 'union'):
+    if token in ('struct', 'union','enum'):
         name = parseTaggedName()
     elif isId(token):
         name = token
@@ -140,7 +140,7 @@ def parseTypeName():
     if name in types:
         return name
     else:
-        fatal("unknown type \"%s\"" % name)
+        fatal("unknown type \"%s %s\ " % (name,token))
 
 def parseStruct():
     isStruct = token == 'struct'

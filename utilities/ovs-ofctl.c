@@ -425,7 +425,7 @@ dump_trivial_transaction(const char *vconn_name, enum ofpraw raw)
     struct ofpbuf *request;
     struct vconn *vconn;
 
-    open_vconn(vconn_name, &vconn,allowed_protocols);
+    open_vconn(vconn_name, &vconn);
     request = ofpraw_alloc(raw, vconn_get_version(vconn), 0);
     dump_transaction(vconn, request);
     vconn_close(vconn);
@@ -480,7 +480,7 @@ dump_trivial_stats_transaction(const char *vconn_name, enum ofpraw raw)
     struct ofpbuf *request;
     struct vconn *vconn;
 
-    open_vconn(vconn_name, &vconn,allowed_protocols);
+    open_vconn(vconn_name, &vconn);
     request = ofpraw_alloc(raw, vconn_get_version(vconn), 0);
     dump_stats_transaction(vconn, request);
     vconn_close(vconn);
@@ -568,7 +568,7 @@ ofctl_show(int argc OVS_UNUSED, char *argv[])
     struct ofpbuf *reply;
     bool has_ports;
 
-    open_vconn(vconn_name, &vconn,allowed_protocols);
+    open_vconn(vconn_name, &vconn);
     version = vconn_get_version(vconn);
     request = ofpraw_alloc(OFPRAW_OFPT_FEATURES_REQUEST, version, 0);
     run(vconn_transact(vconn, request, &reply), "talking to %s", vconn_name);
@@ -603,7 +603,7 @@ ofctl_dump_table_features(int argc OVS_UNUSED, char *argv[])
     struct ofpbuf *request;
     struct vconn *vconn;
 
-    open_vconn(argv[1], &vconn,allowed_protocols);
+    open_vconn(argv[1], &vconn);
     request = ofputil_encode_table_features_request(vconn_get_version(vconn));
     if (request) {
         dump_stats_transaction(vconn, request);
@@ -772,7 +772,7 @@ fetch_ofputil_phy_port(const char *vconn_name, const char *port_name,
     /* OpenFlow 1.0, 1.1, and 1.2 put the list of ports in the
      * OFPT_FEATURES_REPLY message.  OpenFlow 1.3 and later versions put it
      * into the OFPST_PORT_DESC reply.  Try it the correct way. */
-    open_vconn(vconn_name, &vconn,allowed_protocols);
+    open_vconn(vconn_name, &vconn);
     found = (vconn_get_version(vconn) < OFP13_VERSION
              ? fetch_port_by_features(vconn, port_name, port_no, pp)
              : fetch_port_by_stats(vconn, port_name, port_no, pp));
@@ -931,7 +931,7 @@ ofctl_queue_stats(int argc, char *argv[])
     struct vconn *vconn;
     struct ofputil_queue_stats_request oqs;
 
-    open_vconn(argv[1], &vconn,allowed_protocols);
+    open_vconn(argv[1], &vconn);
 
     if (argc > 2 && argv[2][0] && strcasecmp(argv[2], "all")) {
         oqs.port_no = str_to_port_no(argv[1], argv[2]);
@@ -962,7 +962,7 @@ ofctl_queue_get_config(int argc OVS_UNUSED, char *argv[])
 
     port = str_to_port_no(vconn_name, port_name);
 
-    protocol = open_vconn(vconn_name, &vconn,allowed_protocols);
+    protocol = open_vconn(vconn_name, &vconn);
     version = ofputil_protocol_to_ofp_version(protocol);
     request = ofputil_encode_queue_get_config_request(version, port);
     dump_transaction(vconn, request);
@@ -985,7 +985,7 @@ open_vconn_for_flow_mod(const char *remote, struct vconn **vconnp,
     }
 
     /* If the initial flow format is allowed and usable, keep it. */
-    cur_protocol = open_vconn(remote, vconnp,allowed_protocols);
+    cur_protocol = open_vconn(remote, vconnp);
     if (usable_protocols & allowed_protocols & cur_protocol) {
         return cur_protocol;
     }
@@ -1383,7 +1383,7 @@ ofctl_monitor(int argc, char *argv[])
     int i;
     enum ofputil_protocol usable_protocols;
 
-    open_vconn(argv[1], &vconn,allowed_protocols);
+    open_vconn(argv[1], &vconn);
     for (i = 2; i < argc; i++) {
         const char *arg = argv[i];
 
@@ -1457,7 +1457,7 @@ ofctl_snoop(int argc OVS_UNUSED, char *argv[])
 {
     struct vconn *vconn;
 
-    open_vconn__(argv[1], SNOOP, &vconn,allowed_protocols);
+    open_vconn__(argv[1], SNOOP, &vconn);
     monitor_vconn(vconn, false);
 }
 
@@ -1468,7 +1468,7 @@ ofctl_dump_ports(int argc, char *argv[])
     struct vconn *vconn;
     ofp_port_t port;
 
-    open_vconn(argv[1], &vconn,allowed_protocols);
+    open_vconn(argv[1], &vconn);
     port = argc > 2 ? str_to_port_no(argv[1], argv[2]) : OFPP_ANY;
     request = ofputil_encode_dump_ports_request(vconn_get_version(vconn), port);
     dump_stats_transaction(vconn, request);
@@ -1482,7 +1482,7 @@ ofctl_dump_ports_desc(int argc OVS_UNUSED, char *argv[])
     struct vconn *vconn;
     ofp_port_t port;
 
-    open_vconn(argv[1], &vconn,allowed_protocols);
+    open_vconn(argv[1], &vconn);
     port = argc > 2 ? str_to_port_no(argv[1], argv[2]) : OFPP_ANY;
     request = ofputil_encode_port_desc_stats_request(vconn_get_version(vconn),
                                                      port);
@@ -1497,7 +1497,7 @@ ofctl_probe(int argc OVS_UNUSED, char *argv[])
     struct vconn *vconn;
     struct ofpbuf *reply;
 
-    open_vconn(argv[1], &vconn,allowed_protocols);
+    open_vconn(argv[1], &vconn);
     request = make_echo_request(vconn_get_version(vconn));
     run(vconn_transact(vconn, request, &reply), "talking to %s", argv[1]);
     if (ofpbuf_size(reply) != sizeof(struct ofp_header)) {
@@ -1529,7 +1529,7 @@ ofctl_packet_out(int argc, char *argv[])
     po.ofpacts = ofpbuf_data(&ofpacts);
     po.ofpacts_len = ofpbuf_size(&ofpacts);
 
-    protocol = open_vconn(argv[1], &vconn,allowed_protocols);
+    protocol = open_vconn(argv[1], &vconn);
     for (i = 4; i < argc; i++) {
         struct ofpbuf *packet, *opo;
         const char *error_msg;
@@ -1604,7 +1604,7 @@ ofctl_mod_port(int argc OVS_UNUSED, char *argv[])
     ovs_fatal(0, "unknown mod-port command '%s'", argv[3]);
 
 found:
-    protocol = open_vconn(argv[1], &vconn,allowed_protocols);
+    protocol = open_vconn(argv[1], &vconn);
     transact_noreply(vconn, ofputil_encode_port_mod(&pm, protocol));
     vconn_close(vconn);
 }
@@ -1623,7 +1623,7 @@ ofctl_mod_table(int argc OVS_UNUSED, char *argv[])
         ovs_fatal(0, "%s", error);
     }
 
-    protocol = open_vconn(argv[1], &vconn,allowed_protocols);
+    protocol = open_vconn(argv[1], &vconn);
     if (!(protocol & usable_protocols)) {
         for (i = 0; i < sizeof(enum ofputil_protocol) * CHAR_BIT; i++) {
             enum ofputil_protocol f = 1 << i;
@@ -1651,7 +1651,7 @@ ofctl_get_frags(int argc OVS_UNUSED, char *argv[])
     struct ofp_switch_config config;
     struct vconn *vconn;
 
-    open_vconn(argv[1], &vconn,allowed_protocols);
+    open_vconn(argv[1], &vconn);
     fetch_switch_config(vconn, &config);
     puts(ofputil_frag_handling_to_string(ntohs(config.flags)));
     vconn_close(vconn);
@@ -1669,7 +1669,7 @@ ofctl_set_frags(int argc OVS_UNUSED, char *argv[])
         ovs_fatal(0, "%s: unknown fragment handling mode", argv[2]);
     }
 
-    open_vconn(argv[1], &vconn,allowed_protocols);
+    open_vconn(argv[1], &vconn);
     fetch_switch_config(vconn, &config);
     flags = htons(mode) | (config.flags & htons(~OFPC_FRAG_MASK));
     if (flags != config.flags) {
@@ -1841,7 +1841,7 @@ ofctl_ping(int argc, char *argv[])
         ovs_fatal(0, "payload must be between 0 and %"PRIuSIZE" bytes", max_payload);
     }
 
-    open_vconn(argv[1], &vconn,allowed_protocols);
+    open_vconn(argv[1], &vconn);
     for (i = 0; i < 10; i++) {
         struct timeval start, end;
         struct ofpbuf *request, *reply;
@@ -1898,7 +1898,7 @@ ofctl_benchmark(int argc OVS_UNUSED, char *argv[])
     printf("Sending %d packets * %u bytes (with header) = %u bytes total\n",
            count, message_size, count * message_size);
 
-    open_vconn(argv[1], &vconn,allowed_protocols);
+    open_vconn(argv[1], &vconn);
     xgettimeofday(&start);
     for (i = 0; i < count; i++) {
         struct ofpbuf *request, *reply;
@@ -2045,7 +2045,7 @@ ofctl_dump_group_stats(int argc, char *argv[])
 
     group_id = gm.group_id;
 
-    open_vconn(argv[1], &vconn,allowed_protocols);
+    open_vconn(argv[1], &vconn);
     request = ofputil_encode_group_stats_request(vconn_get_version(vconn),
                                                  group_id);
     if (request) {
@@ -2062,7 +2062,7 @@ ofctl_dump_group_desc(int argc OVS_UNUSED, char *argv[])
     struct vconn *vconn;
     uint32_t group_id;
 
-    open_vconn(argv[1], &vconn,allowed_protocols);
+    open_vconn(argv[1], &vconn);
 
     if (argc < 3 || !ofputil_group_from_string(argv[2], &group_id)) {
         group_id = OFPG11_ALL;
@@ -2083,7 +2083,7 @@ ofctl_dump_group_features(int argc OVS_UNUSED, char *argv[])
     struct ofpbuf *request;
     struct vconn *vconn;
 
-    open_vconn(argv[1], &vconn,allowed_protocols);
+    open_vconn(argv[1], &vconn);
     request = ofputil_encode_group_features_request(vconn_get_version(vconn));
     if (request) {
         dump_stats_transaction(vconn, request);
@@ -2437,7 +2437,7 @@ ofctl_replace_flows(int argc OVS_UNUSED, char *argv[])
     classifier_init(&cls, NULL);
     usable_protocols = read_flows_from_file(argv[2], &cls, FILE_IDX);
 
-    protocol = open_vconn(argv[1], &vconn,allowed_protocols);
+    protocol = open_vconn(argv[1], &vconn);
     protocol = set_protocol_for_flow_dump(vconn, protocol, usable_protocols,allowed_protocols);
 
     read_flows_from_switch(vconn, protocol, &cls, SWITCH_IDX);
@@ -2484,7 +2484,7 @@ read_flows_from_source(const char *source, struct classifier *cls, int index)
         enum ofputil_protocol protocol;
         struct vconn *vconn;
 
-        protocol = open_vconn(source, &vconn,allowed_protocols);
+        protocol = open_vconn(source, &vconn);
         protocol = set_protocol_for_flow_dump(vconn, protocol, OFPUTIL_P_ANY,allowed_protocols);
         read_flows_from_switch(vconn, protocol, cls, index);
         vconn_close(vconn);

@@ -6181,6 +6181,17 @@ handle_bundle_add(struct ofconn *ofconn, const struct ofp_header *oh)
     return ofp_bundle_add_message(ofconn, &badd);
 }
 
+static enum ofperr 
+handle_checkpoint_rollback_request(struct ofconn *ofconn, const struct ofp_header *oh) 
+{
+        if (ofconn) {
+                if (oh)
+        //TODO!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        return 0;
+                else return 0;
+        }
+        else return 0;
+}
 static enum ofperr
 handle_openflow__(struct ofconn *ofconn, const struct ofpbuf *msg)
     OVS_EXCLUDED(ofproto_mutex)
@@ -6321,6 +6332,8 @@ handle_openflow__(struct ofconn *ofconn, const struct ofpbuf *msg)
 
     case OFPTYPE_BUNDLE_ADD_MESSAGE:
         return handle_bundle_add(ofconn, oh);
+    case OFPTYPE_CHECKPOINT_ROLLBACK_REQUEST:
+        return handle_checkpoint_rollback_request(ofconn, oh);
 
     case OFPTYPE_HELLO:
     case OFPTYPE_ERROR:
@@ -6351,6 +6364,7 @@ handle_openflow__(struct ofconn *ofconn, const struct ofpbuf *msg)
     case OFPTYPE_METER_FEATURES_STATS_REPLY:
     case OFPTYPE_TABLE_FEATURES_STATS_REPLY:
     case OFPTYPE_ROLE_STATUS:
+    case OFPTYPE_CHECKPOINT_ROLLBACK_REPLY:
     default:
         if (ofpmsg_is_stat_request(oh)) {
             return OFPERR_OFPBRC_BAD_STAT;

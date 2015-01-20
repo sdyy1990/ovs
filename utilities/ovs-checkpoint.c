@@ -34,6 +34,7 @@
 #include "ofproto/ofproto.h"
 #include "openflow/nicira-ext.h"
 #include "openflow/openflow.h"
+#include "ofproto/ofp-ofctllib.h"
 #include "packets.h"
 #include "pcap-file.h"
 #include "poll-loop.h"
@@ -50,41 +51,22 @@
 
 
 VLOG_DEFINE_THIS_MODULE(checkpoint);
-#if false
-int main(int argc , char * argv[]) 
-     printf("%s ovs-checkpoint mv%s\n",THIS_MODULE->name, argv[argc-1]);
-     return 0;
-}
-#endif
+
 static void usage(void);
 
-enum open_target { MGMT, SNOOP };
-
-static int open_vconn_socket(const char *name, struct vconn **vconnp);
-static enum ofputil_protocol
-set_protocol_for_flow_dump(struct vconn *vconn,
-                           enum ofputil_protocol cur_protocol,
-                           enum ofputil_protocol usable_protocols);
-static enum ofputil_protocol open_vconn(const char *name, struct vconn **vconnp);
-// get flow table via OFP, and dump the flowtable into a file
 static void checkpoint_dump(const char * switch_name, const char *file_name);
 // read flow table from a local file, and send the flow table to switch via OFP
 static void checkpoint_recover(const char * switch_name, const char *file_name);
 
 // send a OFP request to the switch : checkpoint or recover the flow table inside its private storage space.
-static void checkpoint_request(const char * switch_name, const char *file_name,bool ischeckpoint);
+static void checkpoint_request(const char * switch_name, const char *file_name,char type);
 
-static struct vconn * prepare_dump_flows(int argc, char *argv[], bool aggregate, struct ofpbuf **requestp);
 
 static enum ofputil_protocol allowed_protocols = OFPUTIL_P_ANY;
 
-static bool try_set_protocol(struct vconn *vconn, enum ofputil_protocol want, enum ofputil_protocol *cur);
 static void dump_stats_transaction(struct vconn *vconn, struct ofpbuf *request, FILE * f);
 
-static void transact_noreply(struct vconn *vconn, struct ofpbuf *request);
 
-static void checkpoint_flow_mod(int argc, char *argv[], uint16_t command,struct vconn *vconn, enum ofputil_protocol protocol);
-static enum ofputil_protocol prepare_checkpoint_flow_mod(const char * remote , struct vconn **vconn,enum ofputil_protocol usable_protocols);
 static void request_transaction(struct vconn *vconn, struct ofpbuf *request);
 
 int
@@ -127,12 +109,14 @@ checkpoint_dump(const char * switch_name, const char *file_name) {
     char * argv [2];
     FILE *f = fopen(file_name,"w");
     argv[1] =(char *) switch_name;
-    vconn = prepare_dump_flows(2, argv, false, &request);
+    vconn = prepare_dump_flows(2, argv, false, &request,allowed_protocols);
     dump_stats_transaction(vconn, request, f);
     vconn_close(vconn);
     fclose(f);
 }
 
+
+//need
 static struct vconn *
 prepare_checkpoint_request(const char * conname, const char * fname,
                    struct ofpbuf **requestp, const char type)
@@ -148,14 +132,14 @@ prepare_checkpoint_request(const char * conname, const char * fname,
     usable_protocols = OFPUTIL_P_ANY;
 
     protocol = open_vconn(conname, &vconn);
-    protocol = set_protocol_for_flow_dump(vconn, protocol, usable_protocols);
+    protocol = set_protocol_for_flow_dump(vconn, protocol, usable_protocols, allowed_protocols);
     *requestp = ofputil_encode_checkpoint_rollback_request(&fsr, protocol);
     return vconn;
 }
 
 
 
-
+//need
 static void 
 checkpoint_request(const char * switch_name, const char * file_name,char type) {
     struct ofpbuf *request;
@@ -206,7 +190,7 @@ open_vconn_for_flow_mod(const char *remote, struct vconn **vconnp,
               "formats (%s)", usable_s);
 }
 
-
+/*
 static void
 ofctl_flow_mod__( struct ofputil_flow_mod *fms,
                   size_t n_fms, struct vconn *vconn, enum ofputil_protocol protocol)
@@ -224,7 +208,8 @@ ofctl_flow_mod__( struct ofputil_flow_mod *fms,
     }
 //    vconn_close(vconn);
 }
-
+*/
+/*
 static enum ofputil_protocol
 prepare_checkpoint_flow_mod(const char * remote , struct vconn **vconn,enum ofputil_protocol usable_protocols)
 {
@@ -232,7 +217,8 @@ prepare_checkpoint_flow_mod(const char * remote , struct vconn **vconn,enum ofpu
     protocol = open_vconn_for_flow_mod(remote, vconn, usable_protocols);
     return protocol;
 }
-
+*/
+/*
 static void
 checkpoint_flow_mod(int argc, char *argv[], uint16_t command,struct vconn *vconn, enum ofputil_protocol protocol)
 {
@@ -252,9 +238,10 @@ checkpoint_flow_mod(int argc, char *argv[], uint16_t command,struct vconn *vconn
 }
 
 
+*/
 
 
-
+/*
 static struct vconn *
 prepare_dump_flows(int argc, char *argv[], bool aggregate,
                    struct ofpbuf **requestp)
@@ -276,24 +263,24 @@ prepare_dump_flows(int argc, char *argv[], bool aggregate,
     *requestp = ofputil_encode_flow_stats_request(&fsr, protocol);
     return vconn;
 }
-
+*/
 static void
 send_openflow_buffer(struct vconn *vconn, struct ofpbuf *buffer)
 {
     ofpmsg_update_length(buffer);
     run(vconn_send_block(vconn, buffer), "failed to send packet to switch");
 }
-
+/*
 static void
 dump_stats_transaction(struct vconn *vconn, struct ofpbuf *request, FILE * f)
 {
-    const struct ofp_header *request_oh = request->data_;
+    const struct ofp_header *request_oh = ofpbuf_data(request);
     ovs_be32 send_xid = request_oh->xid;
     enum ofpraw request_raw;
     enum ofpraw reply_raw;
     bool done = false;
 
-    ofpraw_decode_partial(&request_raw, request, request->size);
+    ofpraw_decode_partial(&request_raw, ofpbuf_data(request), ofpbuf_size(request));
     reply_raw = ofpraw_stats_request_to_reply(request_raw,
                 request_oh->version);
 
@@ -303,21 +290,20 @@ dump_stats_transaction(struct vconn *vconn, struct ofpbuf *request, FILE * f)
         struct ofpbuf *reply;
 
         run(vconn_recv_block(vconn, &reply), "OpenFlow packet receive failed");
-        recv_xid = ((struct ofp_header *) reply->data)->xid;
+        recv_xid = ((struct ofp_header *) ofpbuf_data(reply))->xid;
         if (send_xid == recv_xid) {
             enum ofpraw raw;
 
-            ofp_print(f, reply->data, reply->size,  1);
+            ofp_print(stdout, ofpbuf_data(reply), ofpbuf_size(reply), 1);
 
-            ofpraw_decode(&raw, reply->data);
+            ofpraw_decode(&raw, ofpbuf_data(reply));
             if (ofptype_from_ofpraw(raw) == OFPTYPE_ERROR) {
                 done = true;
             } else if (raw == reply_raw) {
-                done = !ofpmp_more(reply->data);
+                done = !ofpmp_more(ofpbuf_data(reply));
             } else {
                 ovs_fatal(0, "received bad reply: %s",
-                          ofp_to_string(reply->data, reply->size,
-                                        1));
+                          ofp_to_string(ofpbuf_data(reply),ofpbuf_size(reply),  1));
             }
         } else {
             VLOG_DBG("received reply with xid %08"PRIx32" "
@@ -326,11 +312,13 @@ dump_stats_transaction(struct vconn *vconn, struct ofpbuf *request, FILE * f)
         ofpbuf_delete(reply);
     }
 }
-
+*/
  void 
 request_transaction(struct vconn *vconn, struct ofpbuf *request) {
-   const struct ofp_header *request_oh = request -> data; ovs_be32 send_xid = request_oh->xid;
-   enum ofpraw request_raw; ofpraw_decode_partial(&request_raw, request->data, request->size);
+   const struct ofp_header *request_oh = ofpbuf_data(request); 
+    ovs_be32 send_xid = request_oh->xid;
+   enum ofpraw request_raw; 
+   ofpraw_decode_partial(&request_raw, ofpbuf_data(request), ofpbuf_size(request));
 //   enum ofpraw reply_raw = ofpraw_checkpoint_request_to_reply(request_raw, request_oh->version);
    send_openflow_buffer(vconn, request);
    bool done = false;
@@ -338,18 +326,19 @@ request_transaction(struct vconn *vconn, struct ofpbuf *request) {
         ovs_be32 recv_xid;
         struct ofpbuf *reply;
         run(vconn_recv_block(vconn,&reply), "Openflow packet receive failed");
-        recv_xid = ((struct ofp_header *) reply->data)->xid;
+        recv_xid = ((struct ofp_header *) ofpbuf_data(reply))->xid;
         printf("%d %d \n",recv_xid,send_xid);
         if (send_xid == recv_xid) {
            enum ofpraw raw;
-           ofpraw_decode(&raw,reply->data);
+           ofpraw_decode(&raw,ofpbuf_data(reply));
            if (ofptype_from_ofpraw(raw) == OFPTYPE_ERROR) {
            } else if (true){// (raw == reply_raw){
                //print
-               ofp_print(stdout,reply->data,reply->size,1); 
-               done = true; !ofpmp_more(reply->data);
+               ofp_print(stdout,ofpbuf_data(reply),ofpbuf_size(reply),1); 
+               done = true; 
+               //!ofpmp_more(ofpbuf_data(reply));
            } else {
-               ovs_fatal(0,"bad reply :%s", ofp_to_string(reply->data,reply->size,1));
+               ovs_fatal(0,"bad reply :%s", ofp_to_string(ofpbuf_data(reply),ofpbuf_size(reply),1));
            }
         } else {
             VLOG_DBG("received reply with xid %08"PRIx32" "
@@ -358,6 +347,7 @@ request_transaction(struct vconn *vconn, struct ofpbuf *request) {
         ofpbuf_delete(reply);
    }
 }
+#if false
 static enum ofputil_protocol
 open_vconn__(const char *name, enum open_target target,
              struct vconn **vconnp)
@@ -411,13 +401,11 @@ open_vconn__(const char *name, enum open_target target,
     }
     return protocol;
 }
-
 static enum ofputil_protocol
 open_vconn(const char *name, struct vconn **vconnp)
 {
     return open_vconn__(name, MGMT, vconnp);
 }
-
 
 static enum ofputil_protocol
 set_protocol_for_flow_dump(struct vconn *vconn,
@@ -509,11 +497,12 @@ transact_multiple_noreply(struct vconn *vconn, struct list *requests)
     ofpbuf_delete(reply);
 }
 
+#endif
 /* Sends 'request', which should be a request that only has a reply if an error
  * occurs, and waits for it to succeed or fail.  If an error does occur, prints
  * it and exits with an error.
  *
- * Destroys 'request'. */
+ * Destroys 'request'. 
 static void
 transact_noreply(struct vconn *vconn, struct ofpbuf *request)
 {

@@ -50,14 +50,13 @@
 
 
 VLOG_DEFINE_THIS_MODULE(checkpoint);
-int main(int argc , char * argv[]) {
-     
+#if false
+int main(int argc , char * argv[]) 
      printf("%s ovs-checkpoint mv%s\n",THIS_MODULE->name, argv[argc-1]);
      return 0;
 }
-
-#if false
-static void usage(void) NO_RETURN;
+#endif
+static void usage(void);
 
 enum open_target { MGMT, SNOOP };
 
@@ -95,22 +94,15 @@ main(int argc, char *argv[])
         usage();
         return 0;
     }
-    if (strlen(argv[1]) > 0 && strlen(argv[2])>0) {
-        if (strcmp(argv[1],"dump") ==0) {
-            checkpoint_dump(argv[2],argv[3]);
-            return 0;
-        }
-        else if (strcmp(argv[1],"recover")==0) {
-            checkpoint_recover(argv[2],argv[3]);
-            return 0;
-        }
-        else if (strcmp(argv[1],"dumpRequest") ==0 ) {
-            checkpoint_request(argv[2],argv[3],true);
-            return 0;
-        }
-        else if (strcmp(argv[1],"recoverRequest") ==0 ) {
-            checkpoint_request(argv[2],argv[3],false);
-        }
+    if (strcmp(argv[1],"dumpRequest") ==0 ) {
+        checkpoint_request(argv[2],argv[3],CHECKPOINT_T);
+        return 0;
+    }
+    else if (strcmp(argv[1],"recoverRequest") ==0 ) {
+            checkpoint_request(argv[2],argv[3],ROLLBACK_T);
+    }
+    else if (strcmp(argv[1],"syncRequest") ==0 ) {
+            checkpoint_request(argv[2],argv[3],ROLLBACK_PREPARE_T);
     }
     return 0;
 }
@@ -119,26 +111,14 @@ main(int argc, char *argv[])
 static void
 usage(void)
 {
-    printf("ovs-checkpoint : OpenVswitch checkpoint utility\n"
-           "usage: \tovs-checkpoint dump switch file\n"
-           "\tovs-checkpoint recover switch file\n" 
-           "\tovs-checkpoint dumpRequest switch file\n");
+    printf("ovs-checkpoint : OpenVswitch checkpoint utility\n \
+\tovs-checkpoint dumpRequest switch file\n \
+\tovs-checkpoint recoverRequest switch file\n \
+\tovs-checkpoint syncRequest switch file\n");
+    return;
 }
 
 
-static void run(int retval, const char *message, ...)
-PRINTF_FORMAT(2, 3);
-
-static void
-run(int retval, const char *message, ...)
-{
-    if (retval) {
-        va_list args;
-
-        va_start(args, message);
-        ovs_fatal_valist(retval, message, args);
-    }
-}
 
 static void
 checkpoint_dump(const char * switch_name, const char *file_name) {
@@ -146,7 +126,7 @@ checkpoint_dump(const char * switch_name, const char *file_name) {
     struct vconn *vconn;
     char * argv [2];
     FILE *f = fopen(file_name,"w");
-    argv[1] = switch_name;
+    argv[1] =(char *) switch_name;
     vconn = prepare_dump_flows(2, argv, false, &request);
     dump_stats_transaction(vconn, request, f);
     vconn_close(vconn);
@@ -155,40 +135,21 @@ checkpoint_dump(const char * switch_name, const char *file_name) {
 
 static struct vconn *
 prepare_checkpoint_request(const char * conname, const char * fname,
-                   struct ofpbuf **requestp)
+                   struct ofpbuf **requestp, const char type)
 {
     enum ofputil_protocol usable_protocols, protocol;
-    struct ofputil_checkpoint_request fsr;
+    struct ofputil_checkpoint_rollback_request fsr;
     struct vconn *vconn;
     //char *error;
 
     //error = parse_ofp_checkpoint_request_str(&fsr, fname, &usable_protocols);
-    strcpy(fsr.fname ,fname);
+    strcpy((char *) fsr.fname ,fname);
+    fsr.type = type;
     usable_protocols = OFPUTIL_P_ANY;
 
     protocol = open_vconn(conname, &vconn);
     protocol = set_protocol_for_flow_dump(vconn, protocol, usable_protocols);
-    *requestp = ofputil_encode_checkpoint_request(&fsr, protocol);
-    return vconn;
-}
-
-
-static struct vconn *
-prepare_recover_request(const char * conname, const char * fname,
-                   struct ofpbuf **requestp)
-{
-    enum ofputil_protocol usable_protocols, protocol;
-    struct ofputil_checkpoint_request fsr;
-    struct vconn *vconn;
-    //char *error;
-
-    //error = parse_ofp_checkpoint_request_str(&fsr, fname, &usable_protocols);
-    strcpy(fsr.fname ,fname);
-    usable_protocols = OFPUTIL_P_ANY;
-
-    protocol = open_vconn(conname, &vconn);
-    protocol = set_protocol_for_flow_dump(vconn, protocol, usable_protocols);
-    *requestp = ofputil_encode_recover_request(&fsr, protocol);
+    *requestp = ofputil_encode_checkpoint_rollback_request(&fsr, protocol);
     return vconn;
 }
 
@@ -196,74 +157,14 @@ prepare_recover_request(const char * conname, const char * fname,
 
 
 static void 
-checkpoint_request(const char * switch_name, const char * file_name,bool ischeckpoint) {
+checkpoint_request(const char * switch_name, const char * file_name,char type) {
     struct ofpbuf *request;
     struct vconn * vconn;
     char * argv[2];
-    argv[1] = switch_name;
-    if (ischeckpoint)
-        vconn = prepare_checkpoint_request(switch_name,file_name,&request);
-    else
-        vconn = prepare_recover_request(switch_name,file_name,&request);
+    argv[1] = (char *) switch_name;
+    vconn = prepare_checkpoint_request(switch_name,file_name,&request,type);
     printf ("vconn establish\n");
     request_transaction(vconn,request);
-    vconn_close(vconn);
-}
-static void checkpoint_recover(const char * switch_name, const char *file_name) {
-    //remove all current flows
-    //ofctl_flow_mod(argc, argv, strict ? OFPFC_DELETE_STRICT : OFPFC_DELETE);
-
-    char * argv [3];
-    argv[1] = switch_name;
-
-    //get usable protocols
-    enum ofputil_protocol protocol;
-    struct vconn * vconn;
-    enum ofputil_protocol usable_protocols;
-    struct ofputil_flow_mod fm;
-    char * error;
-    error = parse_ofp_flow_mod_str(&fm,  "", OFPFC_DELETE, &usable_protocols);
-    if (error) {
-        ovs_fatal(0, "%s", error);
-    }
-
-
-    //connect to switch
-    protocol = prepare_checkpoint_flow_mod(switch_name,&vconn,usable_protocols);
-
-    checkpoint_flow_mod(2,argv,OFPFC_DELETE,vconn,protocol);
-    //add these flows
-    //for each item in argv[2];
-    char bufline[2048];
-    char bufstr[2048];
-    char *p;
-    argv[2] = bufstr;
-    FILE *f = fopen(file_name,"r");
-    while (fgets(bufline,2048,f) != NULL) {
-        p = bufstr;
-        char * p1;
-        if ((p1 = strstr(bufline,"table="))==NULL) continue;
-        while ( (*p = *p1)!=',') {
-            p++;
-            p1++;
-        }
-        p++;
-        if ((p1 = strstr(bufline,"priority="))==NULL) continue;
-        while ( (*p = *p1)!=' ') {
-            p++;
-            p1++;
-        }
-        *p = ',';
-        p++;
-        if ((p1 = strstr(bufline,"actions="))==NULL) continue;
-        while ( (*p = *p1)!='\n') {
-            p++;
-            p1++;
-        }
-        *p = '\0';
-        //printf("+%s+\n",bufstr);
-        checkpoint_flow_mod(3,argv,OFPFC_ADD,vconn,protocol);
-    }
     vconn_close(vconn);
 }
 
@@ -386,13 +287,13 @@ send_openflow_buffer(struct vconn *vconn, struct ofpbuf *buffer)
 static void
 dump_stats_transaction(struct vconn *vconn, struct ofpbuf *request, FILE * f)
 {
-    const struct ofp_header *request_oh = request->data;
+    const struct ofp_header *request_oh = request->data_;
     ovs_be32 send_xid = request_oh->xid;
     enum ofpraw request_raw;
     enum ofpraw reply_raw;
     bool done = false;
 
-    ofpraw_decode_partial(&request_raw, request->data, request->size);
+    ofpraw_decode_partial(&request_raw, request, request->size);
     reply_raw = ofpraw_stats_request_to_reply(request_raw,
                 request_oh->version);
 
@@ -662,4 +563,3 @@ prepare_dump_flows(int argc, char *argv[], bool aggregate,
 }
 
 */
-#endif

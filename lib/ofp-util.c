@@ -8531,7 +8531,7 @@ ofputil_encode_bundle_add(enum ofp_version ofp_version,
 }
 
 
-//ofputil_decode_checkpoint_rollback_request(&sw,oh);
+//ofputil_decode_ceckpoint_rollback_request(&sw,oh);
 //
 //ofputil_decode_checkpoint_rollback_request(&sw,oh);
 
@@ -8550,4 +8550,31 @@ ofputil_decode_checkpoint_rollback_reply(struct ofputil_checkpoint_rollback_repl
         rep->status = (enum ofputil_checkpoint_rollback_reply_status) req11->status;
         memcpy(rep->fname, req11->fname, sizeof (req11->fname));
         return 0;
+}
+struct ofpbuf *make_checkpoint_rollback_reply(const struct ofp_header *rq, char buf[], bool succ,enum ofputil_checkpoint_rollback_type type ,ovs_be32 xid){
+    struct ofpbuf *request;
+    struct ofp11_checkpoint_rollback_reply *m;
+    request = ofpraw_alloc_xid(OFPRAW_OFPT_CHECKPOINT_ROLLBACK_REPLY,rq->version,xid,0);
+    m = ofpbuf_put_zeros(request, sizeof *m);
+    if (type == CHECKPOINT_T) {
+        m->status = succ?CHECKPOINT_SUCC:CHECKPOINT_FAIL;
+    }
+    else if (type == ROLLBACK_T) {
+        m->status = (succ?ROLLBACK_SUCC:ROLLBACK_FAIL);
+    }
+    else if (type == ROLLBACK_PREPARE_T) {
+        m->status = (succ?ROLLBACK_PREPARE_SUCC:ROLLBACK_PREPARE_FAIL);
+    }
+    strcpy((char *) m->fname, buf);
+    return request;
+}
+struct ofpbuf *ofputil_encode_checkpoint_rollback_request( 
+                const struct ofputil_checkpoint_rollback_request *request,
+                enum ofputil_protocol ofp_proto) {
+        struct ofp11_checkpoint_rollback_request *req;
+        struct ofpbuf *msg;
+        msg = ofpraw_alloc( OFPRAW_OFPT_CHECKPOINT_ROLLBACK_REQUEST, ofputil_protocol_to_ofp_version(ofp_proto), 0);
+        req = ofpbuf_put_zeros(msg,sizeof *req);
+        memcpy(req, request, sizeof *req);
+        return msg;
 }

@@ -638,7 +638,8 @@ struct ofp11_flow_removed {
 OFP_ASSERT(sizeof(struct ofp11_flow_removed) == 40);
 enum ofp11_checkpoint_rollback_type {
         CHECKPOINT_T_OFP11 = 1,
-        ROLLBACK_T_OFP11 = 2
+        ROLLBACK_T_OFP11 = 2,
+        ROLLBACK_PREPARE_T_OFP11 = 3
 };
 
 struct ofp11_checkpoint_rollback_request{

@@ -38,6 +38,7 @@
 #include "ofp-errors.h"
 #include "ofp-msgs.h"
 #include "ofp-print.h"
+#include "ofp-parse.h"
 #include "ofp-util.h"
 #include "ofpbuf.h"
 #include "ofproto-provider.h"
@@ -59,7 +60,7 @@
 #include "unixctl.h"
 #include "vlog.h"
 #include "bundles.h"
-
+#include "dirs.h"
 VLOG_DEFINE_THIS_MODULE(ofproto);
 
 COVERAGE_DEFINE(ofproto_flush);
@@ -6181,16 +6182,297 @@ handle_bundle_add(struct ofconn *ofconn, const struct ofp_header *oh)
     return ofp_bundle_add_message(ofconn, &badd);
 }
 
+
+enum ofperr checkpoint_dump_to_file(struct ofproto *ofproto, char * filename, bool * succ) ;
+char * fmygets(char *bufline,FILE *f);
+enum ofperr checkpoint_recover_from_file(struct ofproto *ofproto, char * filename, bool * succ);
+enum ofperr checkpoint_recover_prepare_file(struct ofproto *ofproto, char * filename, bool * succ);
+enum ofperr checkpoint_recover_prepare_file(struct ofproto *ofproto, char * filename, bool * succ)
+    OVS_EXCLUDED(ofproto_mutex)
+{
+
+        //TODO: implement
+        //*succ = false;
+    *succ = false;
+    FILE *fout; char *pPath;
+    char fnamebuf[1024] = {'\0'};
+    pPath = (char *) ovs_logdir();
+    if (pPath != NULL) strcpy(fnamebuf, pPath);
+    pPath = fnamebuf; while (pPath!='\0') pPath++;
+    pPath--; if (*pPath != '/') {pPath++; *pPath = '/';}
+    pPath++;
+    strcpy(pPath,filename);
+    fout = fopen(fnamebuf,"w");
+    enum ofputil_protocol usable_protocols;
+    struct ofputil_flow_stats_request fsr;
+
+    char * errorchar; errorchar = parse_ofp_flow_stats_request_str(&fsr, false,"",&usable_protocols);
+    *ofproto = *ofproto;
+    return false;
+}
+
+void print_flow_stats(FILE *fout, struct ofputil_flow_stats *fs);
+enum ofperr checkpoint_dump_to_file(struct ofproto *ofproto, char * filename, bool * succ) 
+    //TODO:  implment, not tested yet.
+    OVS_EXCLUDED(ofproto_mutex)
+{
+    *succ = false;
+    FILE *fout; char *pPath;
+    char fnamebuf[1024] = {'\0'};
+    pPath = (char *) ovs_logdir();
+    if (pPath != NULL) strcpy(fnamebuf, pPath);
+    pPath = fnamebuf; while (pPath!='\0') pPath++;
+    pPath--; if (*pPath != '/') {pPath++; *pPath = '/';}
+    pPath++;
+    strcpy(pPath,filename);
+    fout = fopen(fnamebuf,"w");
+    enum ofputil_protocol usable_protocols;
+    struct ofputil_flow_stats_request fsr;
+    struct rule_criteria criteria;
+    struct rule_collection rules;
+    struct list replies;
+    enum ofperr error;
+    size_t i;
+
+    char * errorchar; errorchar = parse_ofp_flow_stats_request_str(&fsr, false,"",&usable_protocols);
+
+    if (errorchar != NULL) {
+        ovs_fatal(0, "%s", errorchar);
+    }
+    //ofp_flow_stats_print(&fsr);
+ //       VLOG_INFO("DEBUG anchor 0 %d %d",rules.n,error);
+    rule_criteria_init(&criteria, fsr.table_id, &fsr.match, 0, fsr.cookie,
+                       fsr.cookie_mask, fsr.out_port, fsr.out_group);
+
+   //     VLOG_INFO("DEBUG anchor A %d",rules.n);
+    ovs_mutex_lock(&ofproto_mutex);
+    error = collect_rules_loose(ofproto, &criteria, &rules);
+        VLOG_INFO("DEBUG anchor B ");//%d %d",rules.n,error);
+    rule_criteria_destroy(&criteria);
+    if (!error) {
+        rule_collection_ref(&rules);
+    }
+    
+        VLOG_INFO("DEBUG anchor C %ld",rules.n);
+    ovs_mutex_unlock(&ofproto_mutex);
+
+        VLOG_INFO("DEBUG anchor D %ld",rules.n);
+    if (error) {
+        return error;
+    }
+
+        VLOG_INFO("DEBUG write rule count %ld",rules.n);
+    list_init(&replies);
+    
+    struct ofpbuf *msg;
+
+    msg = ofpraw_alloc_xid(OFPRAW_OFPST_AGGREGATE_REPLY, OFP10_VERSION,
+                           0, 1024);
+
+    list_push_back(&replies, &msg->list_node);
+    
+            VLOG_INFO("DEBUG ancor E");
+    for (i = 0; i < rules.n; i++) {
+    
+        VLOG_INFO("DEBUG write rule number %ld A",i);
+        //mdelay(20);
+        
+        struct rule *rule = rules.rules[i];
+        long long int now = time_msec();
+        struct ofputil_flow_stats fs;
+        long long int created, modified;
+        struct rule_actions *actions;
+        enum ofputil_flow_mod_flags flags;
+
+        VLOG_INFO("DEBUG write rule number %ld A",i);
+        ovs_mutex_lock(&rule->mutex);
+        fs.cookie = rule->flow_cookie;
+        fs.idle_timeout = rule->idle_timeout;
+        fs.hard_timeout = rule->hard_timeout;
+        
+        VLOG_INFO("DEBUG write rule number %ld A",i);
+        created = rule->created;
+        modified = rule->modified;
+        actions =(struct rule_actions *) rule_get_actions(rule);
+        
+        VLOG_INFO("DEBUG write rule number %ld A",i);
+        flags = rule->flags;
+        ovs_mutex_unlock(&rule->mutex);
+        
+        VLOG_INFO("DEBUG write rule number %ld B",i);
+        minimatch_expand(&rule->cr.match, &fs.match);
+        
+        fs.table_id = rule->table_id;
+        calc_duration(created, now, &fs.duration_sec, &fs.duration_nsec);
+        fs.priority = rule->cr.priority;
+        //fs.idle_age = age_secs(now - used);
+        fs.hard_age = age_secs(now - modified);
+        long long int used; 
+        VLOG_INFO("DEBUG write rule number %ld C",i);
+        ofproto->ofproto_class->rule_get_stats(rule, &fs.packet_count,
+                                               &fs.byte_count,&used); 
+        fs.ofpacts = actions->ofpacts;
+        fs.ofpacts_len = actions->ofpacts_len;
+
+        fs.flags = flags;
+        //ofputil_append_flow_stats_reply(&fs, &replies);
+        print_flow_stats(fout,&fs);
+        VLOG_INFO("DEBUG write rule number %ld X",i);
+        rule_actions_destroy(actions);
+    }
+
+    rule_collection_unref(&rules);
+    rule_collection_destroy(&rules);
+
+   // ofconn_print_replies(fout, &replies);
+
+
+    fclose(fout);
+    *succ = true;
+    return 0;
+}
+
+
+
+void print_flow_stats(FILE *fout, struct ofputil_flow_stats *fs) {
+    struct ds f = DS_EMPTY_INITIALIZER;
+    ofp_print_flow_stats(&f,fs);
+    VLOG_INFO("DEBUG STR %s",ds_cstr(&f));
+    fprintf(fout,"%s\n",ds_cstr(&f));
+}
+char * fmygets(char *bufline,FILE *f) {
+   char*init = bufline;
+   while ( (*bufline = fgetc(f))!=EOF) {
+      if (*bufline == '\n' || *bufline=='+') break;
+      bufline ++;
+   }
+   *bufline = '\0';
+   return init;
+}
+
+enum ofperr checkpoint_recover_from_file(struct ofproto *ofproto, char * filename, bool * succ)
+    OVS_EXCLUDED(ofproto_mutex)
+    //TODO:  implment .
+{
+    *succ = false;
+    // OFPFC_DELETE
+    enum ofperr error;
+    enum ofputil_protocol usable_protocols;
+    struct ofputil_flow_mod fm;
+    char * charerror;
+
+    charerror = parse_ofp_flow_mod_str(&fm,  "", OFPFC_DELETE, &usable_protocols);
+    VLOG_INFO("recover:parse delete");
+    if (charerror) {
+        ovs_fatal(0, "%s", charerror);
+    } else 
+    //delete_flows_loose(struct ofproto *ofproto, struct ofconn *ofconn, const struct ofputil_flow_mod *fm, const struct ofp_header *request)        
+    //error = delete_flows_loose(ofproto, NULL, &fm, NULL);
+    
+    //delete_flows_loose(struct ofproto *ofproto, const struct ofputil_flow_mod *fm,const struct flow_mod_requester *req)
+    ovs_mutex_lock(&ofproto_mutex);
+    error = delete_flows_loose(ofproto, &fm, NULL);
+    if (error)
+    {    
+        ovs_mutex_unlock(&ofproto_mutex);
+        return error;
+    }
+    // for each line in file, trigger OFPFC_ADD
+    
+    char * pPath;
+    char fnamebuf[1024] = {'\0'};
+    pPath =(char *) ovs_logdir();
+    VLOG_INFO("DEBUG write file, .%s.",pPath);
+    if (pPath != NULL) strcpy(fnamebuf,pPath);
+    pPath = fnamebuf; while (*pPath!='\0') pPath ++;
+    pPath --; if (*pPath !='/') {pPath++; *pPath = '/';}
+    pPath ++;
+    strcpy(pPath,filename);
+    FILE *f = fopen(fnamebuf,"r");
+    
+    
+    char bufline[2048] = {0};     char bufstr[2048]={0}; char *p;
+    while (fgets(bufline,2048,f)) {
+       // if(strlen(bufline)<=1) break;
+        VLOG_INFO("GOTLINE %s",bufline);
+        p = bufstr;
+        char * p1;
+        if ((p1 = strstr(bufline,"table="))==NULL) continue;
+        while ( (*p = *p1)!=',') {
+            p++;
+            p1++;
+        }
+        p++;
+        if ((p1 = strstr(bufline,"priority="))==NULL) continue;
+        while ( (*p = *p1)!=' ') {
+            p++;
+            p1++;
+        }
+        *p = ',';
+        p++;
+        if ((p1 = strstr(bufline,"actions="))==NULL) continue;
+        while ( (*p = *p1)!='\n' && (*p1)!=' ') {
+            p++;
+            p1++;
+        }
+        *p = '\0';
+        //printf("+%s+\n",bufstr);
+        //...........checkpoint_flow_mod(3,argv,OFPFC_ADD,vconn,protocol);
+        VLOG_INFO("recover:parse add %s",bufstr);
+        charerror = parse_ofp_flow_mod_str(&fm, bufstr, OFPFC_ADD,&usable_protocols);
+        if (error) {
+            ovs_fatal(0, "%s", charerror);
+        } else 
+        VLOG_INFO("recover:addflow");
+        //ofproto *, flow_mod *, flow_mod_requester *
+        error = add_flow(ofproto, &fm, NULL);
+            if (error)
+        {    
+        ovs_mutex_unlock(&ofproto_mutex);
+        return error;
+        }
+        VLOG_INFO("recover:add flow succ.");
+    }
+    
+    
+        
+   //TODO
+   *succ = true;
+   ovs_mutex_unlock(&ofproto_mutex);
+   return 0;
+   
+   
+                       
+
+}
+
 static enum ofperr 
 handle_checkpoint_rollback_request(struct ofconn *ofconn, const struct ofp_header *oh) 
+        OVS_EXCLUDED(ofproto_mutex)
 {
-        if (ofconn) {
-                if (oh)
-        //TODO!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        return 0;
-                else return 0;
-        }
-        else return 0;
+    enum ofperr error;
+    struct ofproto *proto = ofconn_get_ofproto(ofconn);
+    struct ofputil_checkpoint_rollback_request buf;
+    error = ofputil_decode_checkpoint_rollback_request(&buf, oh);
+    if (error) return error;
+    bool succ;
+    if (buf.type == CHECKPOINT_T) {
+         error = checkpoint_dump_to_file(proto,(char *) buf.fname, & succ);
+         ofconn_send_reply(ofconn,
+                        make_checkpoint_rollback_reply(oh,(char *) buf.fname,succ,buf.type,oh->xid));
+
+    }
+    else if (buf.type == ROLLBACK_T) {
+         error = checkpoint_recover_from_file(proto,(char *) buf.fname, & succ);
+         ofconn_send_reply(ofconn,make_checkpoint_rollback_reply(oh,(char*) buf.fname,succ,buf.type,oh->xid));
+    }
+    else if (buf.type == ROLLBACK_PREPARE_T) {
+         error = checkpoint_recover_prepare_file(proto,(char *) buf.fname, & succ);
+         ofconn_send_reply(ofconn,make_checkpoint_rollback_reply(oh,(char*) buf.fname,succ,buf.type,oh->xid));
+    }
+    //ERROR OFP command
+    return error;
+   
 }
 static enum ofperr
 handle_openflow__(struct ofconn *ofconn, const struct ofpbuf *msg)

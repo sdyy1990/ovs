@@ -1106,7 +1106,9 @@ enum ofperr ofputil_decode_bundle_add(const struct ofp_header *,
                                       struct ofputil_bundle_add_msg *);
 enum ofputil_checkpoint_rollback_type {
         CHECKPOINT_T = 1,
-        ROLLBACK_T = 2
+        ROLLBACK_T = 2,
+        ROLLBACK_PREPARE_T = 3
+
 };
 
 //NOTE: HERE the length should be consistent with ofp11_checkpoint_rollback_request
@@ -1119,7 +1121,9 @@ enum ofputil_checkpoint_rollback_reply_status {
             CHECKPOINT_SUCC = 1,
             CHECKPOINT_FAIL = 2,
             ROLLBACK_SUCC =3,
-            ROLLBACK_FAIL =4
+            ROLLBACK_FAIL =4,
+            ROLLBACK_PREPARE_SUCC =5,
+            ROLLBACK_PREPARE_FAIL =6
 };
 struct ofputil_checkpoint_rollback_reply {
        uint8_t fname[15];
@@ -1132,4 +1136,9 @@ enum ofperr
 ofputil_decode_checkpoint_rollback_request(struct ofputil_checkpoint_rollback_request *req, const struct ofp_header *oh );
 enum ofperr
 ofputil_decode_checkpoint_rollback_reply(struct ofputil_checkpoint_rollback_reply *rep, const struct ofp_header *oh);
+
+struct ofpbuf *make_checkpoint_rollback_reply(const struct ofp_header *rq, char buf[], bool succ,enum ofputil_checkpoint_rollback_type type ,ovs_be32 xid);
+struct ofpbuf *ofputil_encode_checkpoint_rollback_request( 
+                const struct ofputil_checkpoint_rollback_request *request,
+                enum ofputil_protocol ofp_proto);
 #endif /* ofp-util.h */

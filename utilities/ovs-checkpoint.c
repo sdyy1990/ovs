@@ -54,12 +54,12 @@ VLOG_DEFINE_THIS_MODULE(checkpoint);
 
 static void usage(void);
 
-static void checkpoint_dump(const char * switch_name, const char *file_name);
+//static void checkpoint_dump(const char * switch_name, const char *file_name);
 // read flow table from a local file, and send the flow table to switch via OFP
 static void checkpoint_recover(const char * switch_name, const char *file_name);
 
 // send a OFP request to the switch : checkpoint or recover the flow table inside its private storage space.
-static void checkpoint_request(const char * switch_name, const char *file_name,char type);
+static void checkpoint_request(const char * switch_name, const char *file_name,char type,char tableid);
 
 
 static enum ofputil_protocol allowed_protocols = OFPUTIL_P_ANY;
@@ -72,19 +72,21 @@ static void request_transaction(struct vconn *vconn, struct ofpbuf *request);
 int
 main(int argc, char *argv[])
 {
-    if (argc != 4) {
+    if (argc != 4 && argc != 5) {
         usage();
         return 0;
     }
     if (strcmp(argv[1],"dumpRequest") ==0 ) {
-        checkpoint_request(argv[2],argv[3],CHECKPOINT_T);
+        checkpoint_request(argv[2],argv[3],CHECKPOINT_T,255);
         return 0;
     }
     else if (strcmp(argv[1],"recoverRequest") ==0 ) {
-            checkpoint_request(argv[2],argv[3],ROLLBACK_T);
+            char table = 255; unsigned int dt = 255;
+            if (argc == 5) sscanf(argv[4],"%ud", &dt);   table = dt;
+            checkpoint_request(argv[2],argv[3],ROLLBACK_T,table);
     }
     else if (strcmp(argv[1],"syncRequest") ==0 ) {
-            checkpoint_request(argv[2],argv[3],ROLLBACK_PREPARE_T);
+            checkpoint_request(argv[2],argv[3],ROLLBACK_PREPARE_T,255);
     }
     return 0;
 }
@@ -101,7 +103,7 @@ usage(void)
 }
 
 
-
+/*
 static void
 checkpoint_dump(const char * switch_name, const char *file_name) {
     struct ofpbuf *request;
@@ -115,11 +117,12 @@ checkpoint_dump(const char * switch_name, const char *file_name) {
     fclose(f);
 }
 
+*/
 
 //need
 static struct vconn *
 prepare_checkpoint_request(const char * conname, const char * fname,
-                   struct ofpbuf **requestp, const char type)
+                   struct ofpbuf **requestp, const char type, char tableid)
 {
     enum ofputil_protocol usable_protocols, protocol;
     struct ofputil_checkpoint_rollback_request fsr;
@@ -129,6 +132,7 @@ prepare_checkpoint_request(const char * conname, const char * fname,
     //error = parse_ofp_checkpoint_request_str(&fsr, fname, &usable_protocols);
     strcpy((char *) fsr.fname ,fname);
     fsr.type = type;
+    fsr.table = tableid;
     printf("fsr type %d\n", fsr.type);
     usable_protocols = OFPUTIL_P_ANY;
 
@@ -142,12 +146,12 @@ prepare_checkpoint_request(const char * conname, const char * fname,
 
 //need
 static void 
-checkpoint_request(const char * switch_name, const char * file_name,char type) {
+checkpoint_request(const char * switch_name, const char * file_name,char type, char tableid) {
     struct ofpbuf *request;
     struct vconn * vconn;
     char * argv[2];
     argv[1] = (char *) switch_name;
-    vconn = prepare_checkpoint_request(switch_name,file_name,&request,type);
+    vconn = prepare_checkpoint_request(switch_name,file_name,&request,type,tableid);
     printf ("vconn establish!!\n");
     request_transaction(vconn,request);
     vconn_close(vconn);

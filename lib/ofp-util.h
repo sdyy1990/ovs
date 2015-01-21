@@ -1114,9 +1114,11 @@ enum ofputil_checkpoint_rollback_type {
 //NOTE: HERE the length should be consistent with ofp11_checkpoint_rollback_request
 //
 struct ofputil_checkpoint_rollback_request{
-       uint8_t fname[15];
+       uint8_t fname[14];
        enum ofputil_checkpoint_rollback_type type;
+       uint8_t table; // only useful when type=rollback_T. table = 255: all, else only do rollback on this specific table. 
 };
+
 enum ofputil_checkpoint_rollback_reply_status {
             CHECKPOINT_SUCC = 1,
             CHECKPOINT_FAIL = 2,

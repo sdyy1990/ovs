@@ -643,8 +643,9 @@ enum ofp11_checkpoint_rollback_type {
 };
 
 struct ofp11_checkpoint_rollback_request{
-       uint8_t fname[15];
+       uint8_t fname[14];
        uint8_t type;
+       uint8_t table;
 };
 OFP_ASSERT(sizeof(struct ofp11_checkpoint_rollback_request) == 16);
 enum ofp11_checkpoint_rollback_reply_status {

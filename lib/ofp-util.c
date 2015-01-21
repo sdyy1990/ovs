@@ -8542,6 +8542,7 @@ ofputil_decode_checkpoint_rollback_request(struct ofputil_checkpoint_rollback_re
         req->type = (enum ofputil_checkpoint_rollback_type) req11->type;
         VLOG_INFO("decode OFPMSG %d %d",  req11->type, req->type);
         memcpy(req->fname, req11->fname, sizeof (req->fname));
+        req->table = req11->table;
         return 0;
 }
 
@@ -8580,6 +8581,7 @@ struct ofpbuf *ofputil_encode_checkpoint_rollback_request(
         //memcpy(req, request, sizeof *req);
         //copy request to req
         req->type =  request->type;
+        req->table = request->table;
         memcpy(req->fname, request->fname, sizeof(request->fname));
         VLOG_INFO("%s %s. %d. %d",request->fname, req->fname, request->type, req->type);
         ofpmsg_update_length(msg);

@@ -6185,7 +6185,7 @@ handle_bundle_add(struct ofconn *ofconn, const struct ofp_header *oh)
 
 enum ofperr checkpoint_dump_to_file(struct ofproto *ofproto, char * filename, bool * succ) ;
 char * fmygets(char *bufline,FILE *f);
-enum ofperr checkpoint_recover_from_file(struct ofproto *ofproto, char * filename, bool * succ);
+enum ofperr checkpoint_recover_from_file(struct ofproto *ofproto, char * filename, bool * succ, unsigned char tableid);
 enum ofperr checkpoint_recover_prepare_file(struct ofproto *ofproto, char * filename, bool * succ);
 enum ofperr checkpoint_recover_prepare_file(struct ofproto *ofproto, char * filename, bool * succ)
     OVS_EXCLUDED(ofproto_mutex)
@@ -6221,7 +6221,6 @@ enum ofperr checkpoint_dump_to_file(struct ofproto *ofproto, char * filename, bo
     *succ = false;
     FILE *fout; char *pPath;
     char fnamebuf[1024] = {'\0'};
-    if (pPath != NULL) strcpy(fnamebuf, pPath);
     strcpy(fnamebuf,ovs_logdir());
     VLOG_WARN("dump to file %s, logdir %s ",fnamebuf, ovs_logdir());
     pPath = fnamebuf; while (pPath==fnamebuf || *pPath!='\0') pPath++;
@@ -6354,7 +6353,7 @@ char * fmygets(char *bufline,FILE *f) {
    return init;
 }
 
-enum ofperr checkpoint_recover_from_file(struct ofproto *ofproto, char * filename, bool * succ)
+enum ofperr checkpoint_recover_from_file(struct ofproto *ofproto, char * filename, bool * succ, unsigned char tableid)
     OVS_EXCLUDED(ofproto_mutex)
     //TODO:  implment .
 {
@@ -6364,15 +6363,15 @@ enum ofperr checkpoint_recover_from_file(struct ofproto *ofproto, char * filenam
     enum ofputil_protocol usable_protocols;
     struct ofputil_flow_mod fm;
     char * charerror;
-
-    charerror = parse_ofp_flow_mod_str(&fm,  "", OFPFC_DELETE, &usable_protocols);
-    VLOG_INFO("recover:parse delete");
+    char buf[20] = {'\0'};
+    if (tableid != 255) sprintf(buf,"table=%d",tableid);
+    charerror = parse_ofp_flow_mod_str(&fm,  buf, OFPFC_DELETE, &usable_protocols);
+    VLOG_INFO("recover:parse delete %s",buf);
     if (charerror) {
         ovs_fatal(0, "%s", charerror);
     } else 
-    //delete_flows_loose(struct ofproto *ofproto, struct ofconn *ofconn, const struct ofputil_flow_mod *fm, const struct ofp_header *request)        
+    //delete_flows_loose(struct ofproto *ofproto, struct ofconn *ofconn, const struct ofputil_flow_mod *fm, const struct ofp_header *request) 
     //error = delete_flows_loose(ofproto, NULL, &fm, NULL);
-    
     //delete_flows_loose(struct ofproto *ofproto, const struct ofputil_flow_mod *fm,const struct flow_mod_requester *req)
     ovs_mutex_lock(&ofproto_mutex);
     error = delete_flows_loose(ofproto, &fm, NULL);
@@ -6382,7 +6381,6 @@ enum ofperr checkpoint_recover_from_file(struct ofproto *ofproto, char * filenam
         return error;
     }
     // for each line in file, trigger OFPFC_ADD
-    
     char * pPath;
     char fnamebuf[1024] = {'\0'};
     pPath =(char *) ovs_logdir();
@@ -6401,7 +6399,12 @@ enum ofperr checkpoint_recover_from_file(struct ofproto *ofproto, char * filenam
         VLOG_INFO("GOTLINE %s",bufline);
         p = bufstr;
         char * p1;
-        if ((p1 = strstr(bufline,"table="))==NULL) continue;
+        if (tableid == 255) {
+            if ((p1 = strstr(bufline,"table="))==NULL) continue;
+        }
+        else {
+            if ((p1 = strstr(bufline,buf))==NULL) continue;
+        }
         while ( (*p = *p1)!=',') {
             p++;
             p1++;
@@ -6466,7 +6469,7 @@ handle_checkpoint_rollback_request(struct ofconn *ofconn, const struct ofp_heade
 
     }
     else if (buf.type == ROLLBACK_T) {
-         error = checkpoint_recover_from_file(proto,(char *) buf.fname, & succ);
+         error = checkpoint_recover_from_file(proto,(char *) buf.fname, & succ, buf.table);
     }
     else if (buf.type == ROLLBACK_PREPARE_T) {
          error = checkpoint_recover_prepare_file(proto,(char *) buf.fname, & succ);

@@ -8540,6 +8540,7 @@ enum ofperr
 ofputil_decode_checkpoint_rollback_request(struct ofputil_checkpoint_rollback_request *req, const struct ofp_header *oh ) {
         const struct ofp11_checkpoint_rollback_request *req11 = ofpmsg_body(oh);
         req->type = (enum ofputil_checkpoint_rollback_type) req11->type;
+        VLOG_INFO("decode OFPMSG %d %d",  req11->type, req->type);
         memcpy(req->fname, req11->fname, sizeof (req->fname));
         return 0;
 }
@@ -8565,6 +8566,7 @@ struct ofpbuf *make_checkpoint_rollback_reply(const struct ofp_header *rq, char 
     else if (type == ROLLBACK_PREPARE_T) {
         m->status = (succ?ROLLBACK_PREPARE_SUCC:ROLLBACK_PREPARE_FAIL);
     }
+    VLOG_INFO("reply type %d , succ %d, result %d", type, succ, m->status);
     strcpy((char *) m->fname, buf);
     return request;
 }
@@ -8575,6 +8577,11 @@ struct ofpbuf *ofputil_encode_checkpoint_rollback_request(
         struct ofpbuf *msg;
         msg = ofpraw_alloc( OFPRAW_OFPT_CHECKPOINT_ROLLBACK_REQUEST, ofputil_protocol_to_ofp_version(ofp_proto), 0);
         req = ofpbuf_put_zeros(msg,sizeof *req);
-        memcpy(req, request, sizeof *req);
+        //memcpy(req, request, sizeof *req);
+        //copy request to req
+        req->type =  request->type;
+        memcpy(req->fname, request->fname, sizeof(request->fname));
+        VLOG_INFO("%s %s. %d. %d",request->fname, req->fname, request->type, req->type);
+        ofpmsg_update_length(msg);
         return msg;
 }

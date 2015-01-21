@@ -6194,7 +6194,8 @@ enum ofperr checkpoint_recover_prepare_file(struct ofproto *ofproto, char * file
         //TODO: implement
         //*succ = false;
     *succ = false;
-    FILE *fout; char *pPath;
+    //FILE *fout;
+	char *pPath;
     char fnamebuf[1024] = {'\0'};
     pPath = (char *) ovs_logdir();
     if (pPath != NULL) strcpy(fnamebuf, pPath);
@@ -6202,11 +6203,11 @@ enum ofperr checkpoint_recover_prepare_file(struct ofproto *ofproto, char * file
     pPath--; if (*pPath != '/') {pPath++; *pPath = '/';}
     pPath++;
     strcpy(pPath,filename);
-    fout = fopen(fnamebuf,"w");
-    enum ofputil_protocol usable_protocols;
-    struct ofputil_flow_stats_request fsr;
+ //   fout = fopen(fnamebuf,"w");
+//    enum ofputil_protocol usable_protocols;
+//    struct ofputil_flow_stats_request fsr;
 
-    char * errorchar; errorchar = parse_ofp_flow_stats_request_str(&fsr, false,"",&usable_protocols);
+//    char * errorchar; errorchar = parse_ofp_flow_stats_request_str(&fsr, false,"",&usable_protocols);
     *ofproto = *ofproto;
     return false;
 }
@@ -6216,16 +6217,19 @@ enum ofperr checkpoint_dump_to_file(struct ofproto *ofproto, char * filename, bo
     //TODO:  implment, not tested yet.
     OVS_EXCLUDED(ofproto_mutex)
 {
+    VLOG_WARN("dump to file");
     *succ = false;
     FILE *fout; char *pPath;
     char fnamebuf[1024] = {'\0'};
-    pPath = (char *) ovs_logdir();
     if (pPath != NULL) strcpy(fnamebuf, pPath);
-    pPath = fnamebuf; while (pPath!='\0') pPath++;
+    strcpy(fnamebuf,ovs_logdir());
+    VLOG_WARN("dump to file %s, logdir %s ",fnamebuf, ovs_logdir());
+    pPath = fnamebuf; while (pPath==fnamebuf || *pPath!='\0') pPath++;
     pPath--; if (*pPath != '/') {pPath++; *pPath = '/';}
     pPath++;
     strcpy(pPath,filename);
     fout = fopen(fnamebuf,"w");
+    VLOG_WARN("dump to file %s, logdir %s ",fnamebuf, ovs_logdir());
     enum ofputil_protocol usable_protocols;
     struct ofputil_flow_stats_request fsr;
     struct rule_criteria criteria;
@@ -6253,7 +6257,7 @@ enum ofperr checkpoint_dump_to_file(struct ofproto *ofproto, char * filename, bo
         rule_collection_ref(&rules);
     }
     
-        VLOG_INFO("DEBUG anchor C %ld",rules.n);
+        VLOG_WARN("DEBUG anchor C %ld",rules.n);
     ovs_mutex_unlock(&ofproto_mutex);
 
         VLOG_INFO("DEBUG anchor D %ld",rules.n);
@@ -6454,22 +6458,22 @@ handle_checkpoint_rollback_request(struct ofconn *ofconn, const struct ofp_heade
     struct ofproto *proto = ofconn_get_ofproto(ofconn);
     struct ofputil_checkpoint_rollback_request buf;
     error = ofputil_decode_checkpoint_rollback_request(&buf, oh);
+    VLOG_WARN("handle checkpoint rollback, %d %d %d %d\n",buf.type,CHECKPOINT_T,ROLLBACK_T,ROLLBACK_PREPARE_T);
     if (error) return error;
-    bool succ;
+    bool succ = false;
     if (buf.type == CHECKPOINT_T) {
          error = checkpoint_dump_to_file(proto,(char *) buf.fname, & succ);
-         ofconn_send_reply(ofconn,
-                        make_checkpoint_rollback_reply(oh,(char *) buf.fname,succ,buf.type,oh->xid));
 
     }
     else if (buf.type == ROLLBACK_T) {
          error = checkpoint_recover_from_file(proto,(char *) buf.fname, & succ);
-         ofconn_send_reply(ofconn,make_checkpoint_rollback_reply(oh,(char*) buf.fname,succ,buf.type,oh->xid));
     }
     else if (buf.type == ROLLBACK_PREPARE_T) {
          error = checkpoint_recover_prepare_file(proto,(char *) buf.fname, & succ);
-         ofconn_send_reply(ofconn,make_checkpoint_rollback_reply(oh,(char*) buf.fname,succ,buf.type,oh->xid));
     }
+    else {
+    }
+    ofconn_send_reply(ofconn,make_checkpoint_rollback_reply(oh,(char*) buf.fname,succ,buf.type,oh->xid));
     //ERROR OFP command
     return error;
    

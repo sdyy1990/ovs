@@ -3010,7 +3010,10 @@ ofp_print_checkpoint_request(struct ds *string, const struct ofp_header *oh)
 		ds_put_cstr(string," Type: checkpoint");
 	if (sw.type == ROLLBACK_T) 
 		ds_put_cstr(string," Type: rollback");
-  
+
+    char buf[10];
+    sprintf(buf,"type%d",sw.type);
+    ds_put_cstr(string,buf);
 }
 
 static void
@@ -3025,7 +3028,10 @@ ofp_print_checkpoint_reply(struct ds * string,
         return;
     }
     ds_put_char(string,' ');
-    ds_put_cstr(string,"ckpt/robk reply token:");
+    char buf[10];
+    sprintf(buf,"status%d",sw.status);
+    ds_put_cstr(string,buf);
+    ds_put_cstr(string,"ckpt/robk reply... token:");
     ds_put_cstr(string,(const char *) sw.fname);
     if (sw.status == CHECKPOINT_SUCC) 
        ds_put_cstr(string,"Checkpoint+SUCC");
@@ -3035,5 +3041,6 @@ ofp_print_checkpoint_reply(struct ds * string,
        ds_put_cstr(string,"Rollback+SUCC");
 	else if (sw.status == ROLLBACK_SUCC) 
        ds_put_cstr(string,"Rollback+FAIL");
+    
 }
 

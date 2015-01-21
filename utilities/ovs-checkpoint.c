@@ -129,6 +129,7 @@ prepare_checkpoint_request(const char * conname, const char * fname,
     //error = parse_ofp_checkpoint_request_str(&fsr, fname, &usable_protocols);
     strcpy((char *) fsr.fname ,fname);
     fsr.type = type;
+    printf("fsr type %d\n", fsr.type);
     usable_protocols = OFPUTIL_P_ANY;
 
     protocol = open_vconn(conname, &vconn);
@@ -147,7 +148,7 @@ checkpoint_request(const char * switch_name, const char * file_name,char type) {
     char * argv[2];
     argv[1] = (char *) switch_name;
     vconn = prepare_checkpoint_request(switch_name,file_name,&request,type);
-    printf ("vconn establish\n");
+    printf ("vconn establish!!\n");
     request_transaction(vconn,request);
     vconn_close(vconn);
 }
